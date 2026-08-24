@@ -36,3 +36,14 @@ async function run() {
   }
 }
 run().catch(console.dir);
+
+
+app.get('/', (req, res) => {
+    res.send('FoodRush Server is Running!');
+});
+
+
+// Start server
+app.listen(port, () => {
+    console.log(`FoodRush server running on port ${port}`);
+});
