@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 
 const app = express();
@@ -27,6 +27,65 @@ async function run() {
 
     const db = client.db('food-rush-db');
 
+    const userCollection = db.collection('users')
+    const foodCollection = db.collection('foods')
+
+
+    // User Api
+
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+
+      const existingUser = await userCollection.findOne({
+        email: user.email,
+      })
+
+      if (existingUser) {
+        return res.send({
+          message: 'User already exists'
+        })
+      }
+
+      const userWithCreatedAt = {
+        ...user,
+        createdAt: new Date()
+      };
+
+
+      const result = await userCollection.insertOne(userWithCreatedAt);
+
+      res.send(result)
+    })
+
+
+    // food Api
+    app.post('/foods', async (req, res) => {
+      const foodData = req.body;
+
+      const result = await foodCollection.insertOne(foodData);
+
+      res.send(result)
+    })
+
+    app.get('/foods', async (req, res) => {
+      const foods = await foodCollection.find().toArray();
+
+      res.send(foods)
+    })
+
+
+    app.get('/foods/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+
+
+      const food = await foodCollection.findOne(query);
+
+      res.send(food)
+
+    })
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
@@ -39,11 +98,11 @@ run().catch(console.dir);
 
 
 app.get('/', (req, res) => {
-    res.send('FoodRush Server is Running!');
+  res.send('FoodRush Server is Running!');
 });
 
 
 // Start server
 app.listen(port, () => {
-    console.log(`FoodRush server running on port ${port}`);
+  console.log(`FoodRush server running on port ${port}`);
 });
