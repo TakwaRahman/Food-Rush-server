@@ -29,6 +29,7 @@ async function run() {
 
     const userCollection = db.collection('users')
     const foodCollection = db.collection('foods')
+    const restaurantsCollection = db.collection('restaurants')
 
 
     // User Api
@@ -83,6 +84,21 @@ async function run() {
 
       res.send(food)
 
+    })
+
+
+    // Restaurents api
+    app.post('/restaurants', async (req, res) => {
+      const restaurants = req.body;
+
+      const result = await restaurantsCollection.insertOne(restaurants);
+      res.send(result)
+    })
+
+    app.get('/restaurants', async (req, res)=>{
+      const restaurants = (await restaurantsCollection.find().sort({rating: -1}).toArray());
+
+      res.send(restaurants)
     })
 
 
