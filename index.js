@@ -30,6 +30,7 @@ async function run() {
     const userCollection = db.collection('users')
     const foodCollection = db.collection('foods')
     const restaurantsCollection = db.collection('restaurants')
+    const cartCollection = db.collection('cart')
 
 
     // User Api
@@ -87,6 +88,55 @@ async function run() {
     })
 
 
+    // cart Api
+    app.post('/cart', async (req, res) => {
+
+      const email = req.user.email;
+
+      const cartItem = req.body;
+
+      const existingItem = await cartCollection.findOne({
+        userEmail: email,
+        foodId: cartItem.foodId
+      });
+
+      if (existingItem) {
+
+        const result = await cartCollection.updateOne(
+          {
+            _id: existingItem._id
+          },
+          {
+            $inc: {
+              quantity: 1
+            }
+          }
+        );
+
+        return res.send({
+          success: true,
+          message: "Cart quantity increased",
+          result
+        });
+      }
+
+
+      const newCartItem = {
+        ...cartItem,
+        userEmail: email
+      };
+
+      const result = await cartCollection.insertOne(newCartItem);
+
+      res.send({
+        success: true,
+        message: "Added to cart",
+        result
+      });
+
+    });
+
+
     // Restaurents api
     app.post('/restaurants', async (req, res) => {
       const restaurants = req.body;
@@ -95,8 +145,8 @@ async function run() {
       res.send(result)
     })
 
-    app.get('/restaurants', async (req, res)=>{
-      const restaurants = (await restaurantsCollection.find().sort({rating: -1}).toArray());
+    app.get('/restaurants', async (req, res) => {
+      const restaurants = (await restaurantsCollection.find().sort({ rating: -1 }).toArray());
 
       res.send(restaurants)
     })
