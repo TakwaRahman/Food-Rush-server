@@ -90,50 +90,47 @@ async function run() {
 
     // cart Api
     app.post('/cart', async (req, res) => {
+      try {
+        const cartItem = req.body;
 
-      const email = req.user.email;
+        const existingItem = await cartCollection.findOne({
+          userEmail: cartItem.userEmail,
+          foodId: cartItem.foodId
+        });
 
-      const cartItem = req.body;
-
-      const existingItem = await cartCollection.findOne({
-        userEmail: email,
-        foodId: cartItem.foodId
-      });
-
-      if (existingItem) {
-
-        const result = await cartCollection.updateOne(
-          {
-            _id: existingItem._id
-          },
-          {
-            $inc: {
-              quantity: 1
+        if (existingItem) {
+          const result = await cartCollection.updateOne(
+            { _id: existingItem._id },
+            {
+              $inc: {
+                quantity: 1
+              }
             }
-          }
-        );
+          );
 
-        return res.send({
+          return res.send({
+            success: true,
+            message: "Cart quantity increased",
+            result
+          });
+        }
+
+        const result = await cartCollection.insertOne(cartItem);
+
+        res.send({
           success: true,
-          message: "Cart quantity increased",
+          message: "Added to cart",
           result
         });
+
+      } catch (error) {
+        console.error(error);
+
+        res.status(500).send({
+          success: false,
+          message: error.message
+        });
       }
-
-
-      const newCartItem = {
-        ...cartItem,
-        userEmail: email
-      };
-
-      const result = await cartCollection.insertOne(newCartItem);
-
-      res.send({
-        success: true,
-        message: "Added to cart",
-        result
-      });
-
     });
 
 
@@ -149,6 +146,16 @@ async function run() {
       const restaurants = (await restaurantsCollection.find().sort({ rating: -1 }).toArray());
 
       res.send(restaurants)
+    })
+
+    app.get('/restaurants/:id', async (req, res) => {
+      const id = req.params.id;
+
+      const query = { _id: new ObjectId(id) }
+
+      const result = await restaurantsCollection.findOne(query);
+
+      res.send(result);
     })
 
 
