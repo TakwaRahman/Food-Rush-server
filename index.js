@@ -99,19 +99,10 @@ async function run() {
         });
 
         if (existingItem) {
-          const result = await cartCollection.updateOne(
-            { _id: existingItem._id },
-            {
-              $inc: {
-                quantity: 1
-              }
-            }
-          );
-
           return res.send({
-            success: true,
-            message: "Cart quantity increased",
-            result
+            success: false,
+            alreadyExists: true,
+            message: "This food is already in your cart"
           });
         }
 
@@ -132,6 +123,25 @@ async function run() {
         });
       }
     });
+
+    app.get('/cart', async (req, res) => {
+      const email = req.query.email;
+
+      const result = await cartCollection.find({ userEmail: email }).toArray();
+
+      res.send(result)
+    })
+
+
+    app.delete('/cart/:id', async (req, res) => {
+      const id = req.params.id;
+
+      const query = { _id: new ObjectId(id) }
+
+      const result = await cartCollection.deleteOne(query);
+
+      res.send(result)
+    })
 
 
     // Restaurents api
