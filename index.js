@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -142,6 +144,121 @@ async function run() {
 
       res.send(result)
     })
+
+    // Stripe Checkout API
+    // Stripe Checkout API
+    app.post('/create-checkout-session', async (req, res) => {
+      try {
+        const { cartItems, userEmail } = req.body;
+
+        if (!cartItems || cartItems.length === 0) {
+          return res.status(400).send({
+            success: false,
+            message: "Cart is empty"
+          });
+        }
+
+        // Subtotal
+        const subtotal = cartItems.reduce(
+          (total, item) =>
+            total +
+            Number(item.price) * (Number(item.quantity) || 1),
+          0
+        );
+
+        // 10% discount
+        const discount = subtotal * 0.10;
+
+        // Delivery fee
+        const deliveryFee = 5;
+
+        // Final total
+        const total = subtotal - discount + deliveryFee;
+
+        // Food items
+        const foodLineItems = cartItems.map(item => ({
+          price_data: {
+            currency: 'usd',
+
+            product_data: {
+              name: item.name || item.foodName || "Food Item",
+
+              // যদি তোমার image field "photo" হয়
+              images: item.photo ? [item.photo] : [],
+            },
+
+            unit_amount: Math.round(Number(item.price)),
+          },
+
+          quantity: Number(item.quantity) || 1,
+        }));
+
+        // Delivery fee
+        const deliveryLineItem = {
+          price_data: {
+            currency: 'usd',
+
+            product_data: {
+              name: 'Delivery Fee',
+            },
+
+            unit_amount: Math.round(deliveryFee),
+          },
+
+          quantity: 1,
+        };
+
+        const coupon = await stripe.coupons.create({
+          percent_off: 10,
+          duration: 'once'
+        });
+
+        // Stripe Checkout Session
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ['card'],
+
+          line_items: [
+            ...foodLineItems,
+            deliveryLineItem
+          ],
+
+          mode: 'payment',
+
+          customer_email: userEmail,
+
+          success_url: 'http://localhost:5173/payment-success',
+
+          cancel_url: 'http://localhost:5173/cart',
+
+          discounts: [
+            {
+              coupon: coupon.id
+            }
+          ],
+
+          metadata: {
+            userEmail,
+            subtotal: subtotal.toString(),
+            discount: discount.toString(),
+            deliveryFee: deliveryFee.toString(),
+            total: total.toString()
+          }
+        });
+
+        res.send({
+          success: true,
+          url: session.url
+        });
+
+      } catch (error) {
+        console.error("Stripe Error:", error);
+
+        res.status(500).send({
+          success: false,
+          message: error.message
+        });
+      }
+    });
 
 
     // Restaurents api
